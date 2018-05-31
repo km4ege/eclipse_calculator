@@ -165,16 +165,20 @@ def calculate_Svec(date_time,lat=None,lon=None,height=0.,loc=None):
     lon:        degrees +E / -W
     height:     meters
 
-    returns:    Eclipse obscuration (solar disk area obscured / solar disk area).
-                Obscuration will be 0 if astronomical night.
-                (Sun is > 18 deg below horizon.)
+    returns:    Position of sun relative to input point/points and location of observer. 
+                Note, that if vectors input for both lat/lon and date_time, only the first date_time value will be used. (Code prioritizes lat/lon vector.) 
     """
     date_time   = array(date_time)
     lat         = array(lat)
     lon         = array(lon)
     height      = array(height)
 
-    if len(lat)!=len(lon): print 'Error: Length of Lat and Lon arrays Inconsistent!'
+    if len(lat)!=len(lon): 
+        print 'Warning: Length of Lat and Lon arrays Inconsistent!'
+        if len(lat)==1: lat = conform(lat, lon)
+        elif len(lon)==1: lon = conform(lon, lat)
+        else: print 'Error: Length difference between Lat and Lon arrays not reconciled!'
+
 #    if len(date_time)<len(lat):
 #        if len(height) == 1:
 #            height      = conform(height, lat)
@@ -184,9 +188,8 @@ def calculate_Svec(date_time,lat=None,lon=None,height=0.,loc=None):
 #            for ht in height:
 
     if len(date_time)<len(lat) and len(date_time) == 1:
-            height      = conform(height, lat)
-            date_time   = conform_byval(date_time,lat)
-
+        date_time   = conform_byval(date_time,lat)
+        height      = conform(height, lat)
     else:
         lat         = conform(lat,date_time)
         lon         = conform(lon,date_time)
@@ -200,8 +203,8 @@ def calculate_Svec(date_time,lat=None,lon=None,height=0.,loc=None):
 
     sun_aa      = get_sun(time_aa).transform_to(aaframe)
 
-    R_sun   = constants.R_sun
-    R_moon  = 1737.1 * u.km
+#    R_sun   = constants.R_sun
+#    R_moon  = 1737.1 * u.km
     return sun_aa, aaframe
 
 def calculate_obscuration2(date_time,lat=None,lon=None,height=0.,loc=None):
@@ -214,13 +217,15 @@ def calculate_obscuration2(date_time,lat=None,lon=None,height=0.,loc=None):
     returns:    Eclipse obscuration (solar disk area obscured / solar disk area).
                 Obscuration will be 0 if astronomical night.
                 (Sun is > 18 deg below horizon.)
+                Note, this function is for vectorized calculations with lat/lon vector inputs. 
+                If input a date_time vector, only the first date_time value in vector will be used.
     """
     date_time   = array(date_time)
     lat         = array(lat)
     lon         = array(lon)
     height      = array(height)
 
-    if len(lat)!=len(lon): print 'Error: Length of Lat and Lon arrays Inconsistent!'
+    if len(lat)!=len(lon): print 'Warning: Length of Lat and Lon arrays Inconsistent!'
     date_time   = conform_byval(date_time,lat)
     height      = conform(height, lat)
 
