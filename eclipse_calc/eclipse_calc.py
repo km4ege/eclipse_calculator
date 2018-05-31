@@ -22,6 +22,15 @@ def conform(arr_0,arr_1):
         arr_0 = np.ones(arr_1.shape)*arr_0[0]
     return arr_0
 
+def conform_byval(arr_0,arr_1):
+    """
+    Conform arr_0 to arr_1.
+    """
+    if arr_0.shape != arr_1.shape:
+        arr_0 = np.array([arr_0[0] for val in arr_1.ravel()])
+        arr_0 = arr_0.reshape(arr_1.shape)
+    return arr_0
+
 def raw_area(R,r,d):
     """
     Calculate the area of intersecting circles with radii R
@@ -99,6 +108,121 @@ def calculate_obscuration(date_time,lat=None,lon=None,height=0.,loc=None):
     lat         = conform(lat,date_time)
     lon         = conform(lon,date_time)
     height      = conform(height,date_time)
+
+    R_sun   = constants.R_sun
+    R_moon  = 1737.1 * u.km
+
+    if loc is None:
+        loc     = EarthLocation.from_geodetic(lon,lat,height)
+
+    time_aa     = Time(date_time)
+    aaframe     = AltAz(obstime=time_aa, location=loc)
+
+    sun_aa      = get_sun(time_aa).transform_to(aaframe)
+    moon_aa     = get_moon(time_aa).transform_to(aaframe)
+    sep         = sun_aa.separation(moon_aa)
+
+    sunsize     = apparent_size(R_sun, sun_aa.distance)
+    moonsize    = apparent_size(R_moon, moon_aa.distance)
+
+    r_sun_deg   = sunsize.to(u.degree).value
+    r_moon_deg  = moonsize.to(u.degree).value
+    sep_deg     = sep.degree
+
+    A   = area_intersect(r_sun_deg,r_moon_deg,sep_deg)
+    obs = A/(np.pi*r_sun_deg**2)
+
+    tf      = sun_aa.alt.value < 18
+    obs[tf] = 0
+
+#    # Code to plot the obscuration.
+#    # From https://gist.github.com/eteq/f879c2fe69d75d1c5a9e007b0adce30d
+#    sun_circle  = plt.Circle((sun_aa.az.deg, sun_aa.alt.deg), 
+#			    sunsize.to(u.deg).value,
+#			    fc='yellow')
+#    moon_circle = plt.Circle((moon_aa.az.deg, moon_aa.alt.deg), 
+#			     moonsize.to(u.deg).value,
+#			     fc='black', alpha=.5)
+#
+#    ax = plt.subplot(aspect=1)
+#    ax.add_patch(sun_circle)
+#    ax.add_patch(moon_circle)
+#    biggest = max(sep.deg, sunsize.to(u.deg).value, moonsize.to(u.deg).value)
+#    plt.xlim(sun_aa.az.deg-biggest*1.2, sun_aa.az.deg+biggest*1.2)
+#    plt.ylim(sun_aa.alt.deg-biggest*1.2, sun_aa.alt.deg+biggest*1.2)
+#
+#    plt.xlabel('Azimuth')
+#    plt.ylabel('Altitude');
+
+    if len(obs) == 1:
+        obs = float(obs)
+    return obs
+
+def calculate_Svec(date_time,lat=None,lon=None,height=0.,loc=None):
+    """
+    date_time:  datetime.datetime object
+    lat:        degrees +N / -S
+    lon:        degrees +E / -W
+    height:     meters
+
+    returns:    Eclipse obscuration (solar disk area obscured / solar disk area).
+                Obscuration will be 0 if astronomical night.
+                (Sun is > 18 deg below horizon.)
+    """
+    date_time   = array(date_time)
+    lat         = array(lat)
+    lon         = array(lon)
+    height      = array(height)
+
+    if len(lat)!=len(lon): print 'Error: Length of Lat and Lon arrays Inconsistent!'
+#    if len(date_time)<len(lat):
+#        if len(height) == 1:
+#            height      = conform(height, lat)
+#        if len(date_time)==1:
+#            date_time   = conform_byval(date_time,lat)
+#        else:
+#            for ht in height:
+
+    if len(date_time)<len(lat) and len(date_time) == 1:
+            height      = conform(height, lat)
+            date_time   = conform_byval(date_time,lat)
+
+    else:
+        lat         = conform(lat,date_time)
+        lon         = conform(lon,date_time)
+        height      = conform(height,date_time)
+
+    if loc is None:
+        loc     = EarthLocation.from_geodetic(lon,lat,height)
+
+    time_aa     = Time(date_time)
+    aaframe     = AltAz(obstime=time_aa, location=loc)
+
+    sun_aa      = get_sun(time_aa).transform_to(aaframe)
+
+    R_sun   = constants.R_sun
+    R_moon  = 1737.1 * u.km
+    return sun_aa, aaframe
+
+def calculate_obscuration2(date_time,lat=None,lon=None,height=0.,loc=None):
+    """
+    date_time:  datetime.datetime object
+    lat:        degrees +N / -S
+    lon:        degrees +E / -W
+    height:     meters
+
+    returns:    Eclipse obscuration (solar disk area obscured / solar disk area).
+                Obscuration will be 0 if astronomical night.
+                (Sun is > 18 deg below horizon.)
+    """
+    date_time   = array(date_time)
+    lat         = array(lat)
+    lon         = array(lon)
+    height      = array(height)
+
+    if len(lat)!=len(lon): print 'Error: Length of Lat and Lon arrays Inconsistent!'
+    date_time   = conform_byval(date_time,lat)
+    height      = conform(height, lat)
 
     R_sun   = constants.R_sun
     R_moon  = 1737.1 * u.km
